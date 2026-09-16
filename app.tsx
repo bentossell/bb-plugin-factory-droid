@@ -9,7 +9,10 @@ const MARK_PATH =
 function FactoryMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 508 508"
+      // Tight square around the mark's bounds, not the 508 favicon canvas:
+      // the favicon pads the mark for the black square, which made the icon
+      // render smaller than the other providers' edge-to-edge marks.
+      viewBox="80 79 345 345"
       className={className}
       role="img"
       aria-label="Factory"
