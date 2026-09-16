@@ -14,6 +14,28 @@ import {
 export default async function plugin(bb: BbPluginApi) {
   bb.log.info("loaded");
 
+  // Repair silently when the managed entry is missing or points at a droid
+  // binary that has moved (for example after a Homebrew upgrade). Never blocks
+  // plugin load, and never writes when droid is not installed.
+  async function selfHeal(): Promise<void> {
+    try {
+      const droidBinary = resolveDroidBinary(process.env);
+      if (!droidBinary) return;
+      const installation = inspectInstallation(await paths());
+      if (installation.configured && installation.command === droidBinary) return;
+      const result = provisionInstallation(await paths(), droidBinary);
+      if (result.changed) {
+        const reloaded = await reloadConfig();
+        bb.log.info(
+          `self-repair: ${result.messages.join("; ")}; reload ${reloaded ? "ok" : "failed"}`,
+        );
+      }
+    } catch (error) {
+      bb.log.warn(`self-repair skipped: ${String(error)}`);
+    }
+  }
+  void selfHeal();
+
   async function resolveDataDir(): Promise<string> {
     try {
       const config = await bb.sdk.system.config();
@@ -64,6 +86,9 @@ export default async function plugin(bb: BbPluginApi) {
       );
     } catch (error) {
       lines.push(`bb provider ${PROVIDER_ID}: unknown (${String(error)})`);
+    }
+    if (installation.configured && droidBinary && installation.command !== droidBinary) {
+      lines.push(`path drift: config points at ${installation.command}; reload bb or rerun setup`);
     }
     if (installation.error) lines.push(`config error: ${installation.error}`);
     return lines;

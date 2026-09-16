@@ -26,6 +26,16 @@ bb factory-droid setup
 
 `setup` is safe to rerun. It locates the Droid executable, writes the provider logo, merges only the managed `customAcpAgents` entry into bb's `config.json`, and reloads bb's runtime configuration.
 
+On every bb start the plugin also self-repairs: if the managed entry is missing, or points at a droid binary that has since moved (for example after a Homebrew upgrade), it rewrites and reloads the config automatically. Nothing is written when droid is not installed.
+
+bb's permission mode picker controls droid's autonomy tiers:
+
+| bb mode | droid flag |
+| --- | --- |
+| accept-edits / auto | `--auto medium` |
+| full | `--auto high` |
+| read-only contexts | none (droid exec defaults to read-only) |
+
 Verify the complete integration:
 
 ```bash

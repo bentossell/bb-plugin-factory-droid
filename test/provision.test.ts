@@ -39,12 +39,26 @@ test("managed entry uses native ACP model discovery and reasoning", () => {
   const entry = managedAgentEntry("/tmp/droid");
   assert.deepEqual(entry.args, ["exec", "--output-format", "acp"]);
   assert.equal("modelCli" in entry, false);
+  assert.deepEqual(entry.permissionCli, {
+    readonly: [],
+    workspaceWrite: ["--auto", "medium"],
+    full: ["--auto", "high"],
+  });
   assert.deepEqual(entry.nativeReasoning, {
     configId: "reasoning_effort",
     supportedLevels: ["none", "low", "medium", "high", "xhigh", "max"],
     levelValues: { none: "off" },
     defaultLevel: "high",
   });
+});
+
+test("inspectInstallation reports the configured command", () => {
+  const { droid, paths } = fixture();
+  assert.equal(inspectInstallation(paths).configured, false);
+  provisionInstallation(paths, droid);
+  const installation = inspectInstallation(paths);
+  assert.equal(installation.configured, true);
+  assert.equal(installation.command, droid);
 });
 
 test("provisions without clobbering other config and is idempotent", () => {
