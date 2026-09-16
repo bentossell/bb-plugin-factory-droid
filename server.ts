@@ -6,11 +6,10 @@ import { join } from "node:path";
 import {
   inspectInstallation,
   provisionInstallation,
+  PROVIDER_ID,
   resolveDroidBinary,
   type ProvisionPaths,
 } from "./lib/provision.js";
-
-const PROVIDER_ID = "acp-factory-droid";
 
 export default async function plugin(bb: BbPluginApi) {
   bb.log.info("loaded");
