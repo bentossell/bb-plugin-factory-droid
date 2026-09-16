@@ -4,7 +4,7 @@
   "type": "module",
   "engines": {
     "bb": ">=0.35",
-    "bbPluginSdk": "^0.4.1"
+    "bbPluginSdk": ">=0.4.87"
   },
   "bb": {
     "name": "Factory Droid",
@@ -12,9 +12,11 @@
     "branding": {
       "icon": "Bot"
     },
-    "server": "./server.ts"
+    "server": "./server.ts",
+    "app": "./app.tsx"
   },
   "devDependencies": {
+    "@get-bb/plugin-sdk": "0.4.87",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

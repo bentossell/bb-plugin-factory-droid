@@ -1,5 +1,5 @@
 // Registers Factory Droid as an ACP provider in bb.
-import type { BbPluginApi } from "@bb/plugin-sdk";
+import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
