@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
+  entryMatchesCurrent,
   inspectInstallation,
   provisionInstallation,
   PROVIDER_ID,
@@ -22,7 +23,7 @@ export default async function plugin(bb: BbPluginApi) {
       const droidBinary = resolveDroidBinary(process.env);
       if (!droidBinary) return;
       const installation = inspectInstallation(await paths());
-      if (installation.configured && installation.command === droidBinary) return;
+      if (entryMatchesCurrent(installation.entry, droidBinary)) return;
       const result = provisionInstallation(await paths(), droidBinary);
       if (result.changed) {
         const reloaded = await reloadConfig();

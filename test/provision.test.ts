@@ -6,6 +6,7 @@ import { mkdtempSync } from "node:fs";
 import test from "node:test";
 import {
   AGENT_ID,
+  entryMatchesCurrent,
   inspectInstallation,
   managedAgentEntry,
   provisionInstallation,
@@ -59,6 +60,17 @@ test("inspectInstallation reports the configured command", () => {
   const installation = inspectInstallation(paths);
   assert.equal(installation.configured, true);
   assert.equal(installation.command, droid);
+});
+
+test("entryMatchesCurrent detects stale managed fields", () => {
+  const { droid, paths } = fixture();
+  assert.equal(entryMatchesCurrent(undefined, droid), false);
+  provisionInstallation(paths, droid);
+  const entry = inspectInstallation(paths).entry;
+  assert.equal(entryMatchesCurrent(entry, droid), true);
+  const stale = { ...entry };
+  delete stale.permissionCli;
+  assert.equal(entryMatchesCurrent(stale, droid), false);
 });
 
 test("provisions without clobbering other config and is idempotent", () => {

@@ -166,6 +166,7 @@ export function provisionInstallation(
 export function inspectInstallation(paths: ProvisionPaths): {
   configured: boolean;
   command?: string;
+  entry?: CustomAgent;
   error?: string;
 } {
   try {
@@ -176,8 +177,22 @@ export function inspectInstallation(paths: ProvisionPaths): {
     return {
       configured: entry !== undefined,
       command: typeof entry?.command === "string" ? entry.command : undefined,
+      entry,
     };
   } catch (error) {
     return { configured: false, error: String(error) };
   }
+}
+
+// True when every managed field in the stored entry already matches the
+// current shape, so self-repair has nothing to do.
+export function entryMatchesCurrent(
+  stored: CustomAgent | undefined,
+  droidBinary: string,
+): boolean {
+  if (!stored) return false;
+  const expected = managedAgentEntry(droidBinary);
+  return Object.keys(expected).every(
+    (key) => JSON.stringify(stored[key]) === JSON.stringify(expected[key]),
+  );
 }
