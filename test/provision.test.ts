@@ -41,7 +41,6 @@ test("managed entry uses native ACP model discovery and reasoning", () => {
   assert.deepEqual(entry.args, ["exec", "--output-format", "acp"]);
   assert.equal("modelCli" in entry, false);
   assert.deepEqual(entry.permissionCli, {
-    readonly: [],
     workspaceWrite: ["--auto", "medium"],
     full: ["--auto", "high"],
   });

@@ -93,7 +93,9 @@ function writeIfChanged(path: string, content: string): boolean {
 // bb permission modes map to droid exec autonomy tiers:
 // - "accept-edits"/"auto" keep workspace sandboxing -> --auto medium
 // - "full" bypasses approvals -> --auto high (droid keeps its hard safety checks)
-// - read-only contexts send no flags; droid exec defaults to read-only
+// - read-only contexts send no flags; droid exec defaults to read-only, so no
+//   "readonly" key: bb's permissionCli schema requires min-1 items per array
+//   and rejects empty arrays, which drops the whole custom agent entry.
 export function managedAgentEntry(droidBinary: string): Record<string, unknown> {
   return {
     id: AGENT_ID,
@@ -102,7 +104,6 @@ export function managedAgentEntry(droidBinary: string): Record<string, unknown> 
     args: ["exec", "--output-format", "acp"],
     logo: "logos/factory-droid.svg",
     permissionCli: {
-      readonly: [],
       workspaceWrite: ["--auto", "medium"],
       full: ["--auto", "high"],
     },
