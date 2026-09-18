@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-factory-droid",
-  "version": "0.3.0",
+  "version": "0.2.1",
   "type": "module",
   "engines": {
     "bb": ">=0.41",

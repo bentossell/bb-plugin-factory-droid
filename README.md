@@ -28,7 +28,7 @@ bb factory-droid setup
 
 On every bb start the plugin also self-repairs: if the managed entry is missing, has an outdated shape, or points at a droid binary that has since moved (for example after a Homebrew upgrade), it rewrites the setting automatically. Nothing is written when droid is not installed.
 
-Versions before 0.3.0 wrote the agent into the deprecated `customAcpAgents` array in `config.json`. Current bb rejects that shape, so `setup` (and self-repair) move the entry into the setting and remove the old one.
+Versions before 0.2.1 wrote the agent into the deprecated `customAcpAgents` array in `config.json`. Current bb rejects that shape, so `setup` (and self-repair) move the entry into the setting and remove the old one.
 
 bb's permission mode picker controls droid's autonomy tiers:
 
