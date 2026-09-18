@@ -1,69 +1,79 @@
 // Registers Factory Droid as an ACP provider in bb.
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import {
+  ACP_PLUGIN_ID,
+  assertDroidExecutable,
+  CUSTOM_AGENTS_SETTING,
   entryMatchesCurrent,
-  inspectInstallation,
-  provisionInstallation,
+  findManagedAgent,
+  hasLegacyEntry,
+  parseCustomAgentsSetting,
   PROVIDER_ID,
+  removeLegacyEntry,
   resolveDroidBinary,
-  type ProvisionPaths,
+  serializeCustomAgentsSetting,
+  upsertManagedAgent,
+  type CustomAgent,
 } from "./lib/provision.js";
+
+const REGISTRATION_TIMEOUT_MS = 8_000;
+const SELF_HEAL_ATTEMPTS = 6;
+const SELF_HEAL_RETRY_MS = 2_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export default async function plugin(bb: BbPluginApi) {
   bb.log.info("loaded");
 
-  // Repair silently when the managed entry is missing or points at a droid
-  // binary that has moved (for example after a Homebrew upgrade). Never blocks
-  // plugin load, and never writes when droid is not installed.
-  async function selfHeal(): Promise<void> {
-    try {
-      const droidBinary = resolveDroidBinary(process.env);
-      if (!droidBinary) return;
-      const installation = inspectInstallation(await paths());
-      if (entryMatchesCurrent(installation.entry, droidBinary)) return;
-      const result = provisionInstallation(await paths(), droidBinary);
-      if (result.changed) {
-        const reloaded = await reloadConfig();
-        bb.log.info(
-          `self-repair: ${result.messages.join("; ")}; reload ${reloaded ? "ok" : "failed"}`,
-        );
-      }
-    } catch (error) {
-      bb.log.warn(`self-repair skipped: ${String(error)}`);
-    }
-  }
-  void selfHeal();
-
-  async function resolveDataDir(): Promise<string> {
+  async function configPath(): Promise<string> {
+    let dataDir = process.env.BB_DATA_DIR ?? join(homedir(), ".bb");
     try {
       const config = await bb.sdk.system.config();
-      if (typeof config.dataDir === "string" && config.dataDir.length > 0) {
-        return config.dataDir;
-      }
+      if (typeof config.dataDir === "string" && config.dataDir.length > 0) dataDir = config.dataDir;
     } catch (error) {
       bb.log.warn(`Could not read bb data directory from SDK: ${String(error)}`);
     }
-    return process.env.BB_DATA_DIR ?? join(homedir(), ".bb");
+    return join(dataDir, "config.json");
   }
 
-  async function paths(): Promise<ProvisionPaths> {
-    const dataDir = await resolveDataDir();
-    return {
-      dataDir,
-      configPath: join(dataDir, "config.json"),
-      logoPath: join(dataDir, "logos", "factory-droid.svg"),
-    };
+  async function readCustomAgents(): Promise<CustomAgent[]> {
+    const settings = await bb.sdk.plugins.getSettings({ pluginId: ACP_PLUGIN_ID });
+    return parseCustomAgentsSetting(settings.values[CUSTOM_AGENTS_SETTING]);
+  }
+
+  async function writeCustomAgents(agents: CustomAgent[]): Promise<void> {
+    // provider-acp validates the value with its own schema and re-registers
+    // its agents as soon as the setting changes; an invalid entry is rejected
+    // here instead of being dropped silently at startup.
+    await bb.sdk.plugins.updateSettings({
+      pluginId: ACP_PLUGIN_ID,
+      values: { [CUSTOM_AGENTS_SETTING]: serializeCustomAgentsSetting(agents) },
+    });
+  }
+
+  async function providerRegistered(): Promise<boolean> {
+    const providers = await bb.sdk.providers.list();
+    return providers.some((provider: { id?: string }) => provider.id === PROVIDER_ID);
+  }
+
+  async function waitForProvider(): Promise<boolean> {
+    const deadline = Date.now() + REGISTRATION_TIMEOUT_MS;
+    while (true) {
+      if (await providerRegistered()) return true;
+      if (Date.now() >= deadline) return false;
+      await sleep(250);
+    }
   }
 
   async function reloadConfig(): Promise<boolean> {
     try {
-      const response = await fetch(
-        `${bb.server.loopbackBaseUrl}/api/v1/system/config/reload`,
-        { method: "POST" },
-      );
+      const response = await fetch(`${bb.server.loopbackBaseUrl}/api/v1/system/config/reload`, {
+        method: "POST",
+      });
       return response.ok;
     } catch (error) {
       bb.log.warn(`Could not reload bb config: ${String(error)}`);
@@ -71,27 +81,85 @@ export default async function plugin(bb: BbPluginApi) {
     }
   }
 
-  async function statusLines(): Promise<string[]> {
-    const resolvedPaths = await paths();
-    const installation = inspectInstallation(resolvedPaths);
+  // Writes the managed agent into provider-acp's customAgents setting and
+  // removes the deprecated config.json entry from earlier releases.
+  async function provision(droidBinary: string): Promise<{ changed: boolean; messages: string[] }> {
+    assertDroidExecutable(droidBinary);
+    const messages: string[] = [];
+    const upsert = upsertManagedAgent(await readCustomAgents(), droidBinary);
+    if (upsert.changed) await writeCustomAgents(upsert.agents);
+    messages.push(upsert.message);
+
+    let legacyRemoved = false;
+    const path = await configPath();
+    if (hasLegacyEntry(path)) {
+      legacyRemoved = removeLegacyEntry(path);
+      if (legacyRemoved) {
+        const reloaded = await reloadConfig();
+        messages.push(
+          `removed deprecated customAcpAgents entry from ${path}; config reload ${reloaded ? "ok" : "failed"}`,
+        );
+      }
+    }
+    return { changed: upsert.changed || legacyRemoved, messages };
+  }
+
+  // Repair silently when the managed entry is missing, stale, or points at a
+  // droid binary that has moved (for example after a Homebrew upgrade). Never
+  // blocks plugin load, and never writes when droid is not installed.
+  // provider-acp may still be starting when this plugin loads, so its settings
+  // can be briefly unavailable; retry a few times before giving up.
+  async function selfHeal(): Promise<void> {
     const droidBinary = resolveDroidBinary(process.env);
-    const lines = [
-      `Droid CLI: ${droidBinary ?? "NOT FOUND"}`,
-      `config entry: ${installation.configured ? "present" : "missing"}`,
-      `logo: ${existsSync(resolvedPaths.logoPath) ? "present" : "missing"}`,
-    ];
+    if (!droidBinary) return;
+    for (let attempt = 1; attempt <= SELF_HEAL_ATTEMPTS; attempt += 1) {
+      try {
+        const stored = findManagedAgent(await readCustomAgents());
+        if (entryMatchesCurrent(stored, droidBinary) && !hasLegacyEntry(await configPath())) return;
+        const result = await provision(droidBinary);
+        if (result.changed) {
+          const registered = await waitForProvider();
+          bb.log.info(
+            `self-repair: ${result.messages.join("; ")}; provider ${registered ? "registered" : "not yet registered"}`,
+          );
+        }
+        return;
+      } catch (error) {
+        if (attempt === SELF_HEAL_ATTEMPTS) {
+          bb.log.warn(`self-repair skipped: ${String(error)}`);
+          return;
+        }
+        await sleep(SELF_HEAL_RETRY_MS);
+      }
+    }
+  }
+  void selfHeal();
+
+  async function statusLines(): Promise<string[]> {
+    const droidBinary = resolveDroidBinary(process.env);
+    const lines = [`Droid CLI: ${droidBinary ?? "NOT FOUND"}`];
+    let stored: CustomAgent | undefined;
     try {
-      const providers = await bb.sdk.providers.list();
-      lines.push(
-        `bb provider ${PROVIDER_ID}: ${providers.some((provider: { id?: string }) => provider.id === PROVIDER_ID) ? "registered" : "NOT registered"}`,
-      );
+      stored = findManagedAgent(await readCustomAgents());
+      lines.push(`${ACP_PLUGIN_ID} ${CUSTOM_AGENTS_SETTING} entry: ${stored ? "present" : "missing"}`);
+    } catch (error) {
+      lines.push(`${ACP_PLUGIN_ID} ${CUSTOM_AGENTS_SETTING} entry: unknown (${String(error)})`);
+    }
+    try {
+      lines.push(`bb provider ${PROVIDER_ID}: ${(await providerRegistered()) ? "registered" : "NOT registered"}`);
     } catch (error) {
       lines.push(`bb provider ${PROVIDER_ID}: unknown (${String(error)})`);
     }
-    if (installation.configured && droidBinary && installation.command !== droidBinary) {
-      lines.push(`path drift: config points at ${installation.command}; reload bb or rerun setup`);
+    if (stored && droidBinary && !entryMatchesCurrent(stored, droidBinary)) {
+      lines.push(
+        stored.command === droidBinary
+          ? "stale entry: managed fields differ from this plugin version; rerun setup"
+          : `path drift: entry points at ${String(stored.command)}; rerun setup`,
+      );
     }
-    if (installation.error) lines.push(`config error: ${installation.error}`);
+    if (hasLegacyEntry(await configPath())) {
+      lines.push("deprecated customAcpAgents entry still present in config.json; rerun setup to remove it");
+    }
     return lines;
   }
 
@@ -101,12 +169,12 @@ export default async function plugin(bb: BbPluginApi) {
     commands: [
       {
         name: "setup",
-        summary: "Register Factory Droid as a bb provider and reload bb config",
+        summary: "Register Factory Droid as a bb provider",
         usage: "factory-droid setup",
       },
       {
         name: "status",
-        summary: "Check the Droid CLI, bb config, assets, and provider registration",
+        summary: "Check the Droid CLI, the provider-acp setting, and provider registration",
         usage: "factory-droid status",
       },
     ],
@@ -131,20 +199,17 @@ export default async function plugin(bb: BbPluginApi) {
         };
       }
       try {
-        const result = provisionInstallation(await paths(), droidBinary);
+        const result = await provision(droidBinary);
         const messages = [...result.messages];
-        if (result.changed) {
-          const reloaded = await reloadConfig();
-          messages.push(
-            reloaded
-              ? "reloaded running bb server config"
-              : "WARNING: config was written but the server reload failed; restart bb and check status",
-          );
-        } else {
-          messages.push("configuration is already up to date");
-        }
+        if (!result.changed) messages.push("configuration is already up to date");
+        const registered = await waitForProvider();
+        messages.push(
+          registered
+            ? `bb provider ${PROVIDER_ID}: registered`
+            : `WARNING: bb provider ${PROVIDER_ID} is not registered yet; check \`bb plugin logs ${ACP_PLUGIN_ID}\``,
+        );
         messages.push(`Factory authentication is handled by Droid; run \`${droidBinary}\` once to sign in if needed.`);
-        return { exitCode: 0, stdout: `${messages.join("\n")}\n` };
+        return { exitCode: registered ? 0 : 1, stdout: `${messages.join("\n")}\n` };
       } catch (error) {
         bb.log.error(`Factory Droid setup failed: ${String(error)}`);
         return { exitCode: 1, stderr: `Factory Droid setup failed: ${String(error)}\n` };

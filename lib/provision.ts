@@ -14,25 +14,13 @@ import { homedir } from "node:os";
 
 export const AGENT_ID = "factory-droid";
 export const PROVIDER_ID = `acp-${AGENT_ID}`;
+// The builtin bb plugin that owns ACP providers and the "customAgents" setting.
+export const ACP_PLUGIN_ID = "provider-acp";
+export const CUSTOM_AGENTS_SETTING = "customAgents";
 
-export interface ProvisionPaths {
-  dataDir: string;
-  configPath: string;
-  logoPath: string;
-}
-
-interface CustomAgent extends Record<string, unknown> {
+export interface CustomAgent extends Record<string, unknown> {
   id?: unknown;
 }
-
-// Official Factory mark, from https://factory.ai/favicon.svg
-// Explicit fills only: bb's SVG renderer strips <style> blocks, which made
-// the model-picker provider tab fall back to a generic icon.
-const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 508 508" role="img" aria-label="Factory">
-  <rect width="508" height="508" rx="110" fill="#020202"/>
-  <path fill="#FAFAFA" d="M321.997 150.712C321.401 150.568 320.844 150.299 320.363 149.925C319.883 149.551 319.491 149.08 319.215 148.544C318.938 148.008 318.783 147.42 318.76 146.821C318.738 146.22 318.848 145.624 319.084 145.07C327.226 125.716 330.819 110.23 325.021 103.747C309.666 86.5471 248.085 120.749 228.451 132.333C227.925 132.642 227.337 132.837 226.728 132.903C226.118 132.969 225.501 132.906 224.918 132.719C224.336 132.531 223.801 132.223 223.351 131.815C222.902 131.407 222.548 130.909 222.313 130.356C214.06 111.043 205.384 97.6094 196.589 97.0268C173.279 95.4688 154.491 162.187 148.991 183.932C148.844 184.515 148.57 185.06 148.188 185.528C147.805 185.998 147.323 186.381 146.775 186.651C146.227 186.921 145.626 187.072 145.012 187.094C144.399 187.116 143.788 187.009 143.221 186.778C123.406 178.825 107.545 175.316 100.914 180.98C83.305 195.978 118.315 256.126 130.175 275.304C130.492 275.816 130.692 276.391 130.76 276.987C130.829 277.582 130.765 278.186 130.573 278.755C130.381 279.325 130.065 279.847 129.647 280.286C129.228 280.725 128.718 281.07 128.15 281.298C108.384 289.359 94.6306 297.834 94.0272 306.424C92.439 329.192 160.74 347.544 183.01 352.916C183.605 353.061 184.16 353.33 184.64 353.704C185.118 354.077 185.509 354.548 185.785 355.083C186.061 355.618 186.215 356.205 186.237 356.803C186.26 357.402 186.151 357.998 185.916 358.551C177.773 377.905 174.181 393.398 179.979 399.874C195.334 417.074 256.921 382.877 276.556 371.293C277.081 370.984 277.67 370.789 278.28 370.722C278.889 370.655 279.507 370.717 280.09 370.905C280.673 371.093 281.207 371.402 281.657 371.81C282.106 372.219 282.46 372.717 282.694 373.271C290.947 392.578 299.616 406.012 308.417 406.601C331.728 408.153 350.516 341.44 356.009 319.688C356.157 319.106 356.432 318.562 356.816 318.094C357.2 317.625 357.682 317.243 358.231 316.974C358.779 316.705 359.381 316.554 359.995 316.533C360.608 316.511 361.219 316.619 361.786 316.85C381.601 324.803 397.455 328.304 404.093 322.648C421.702 307.65 386.684 247.495 374.825 228.317C374.51 227.804 374.312 227.229 374.245 226.634C374.177 226.039 374.242 225.436 374.434 224.868C374.626 224.299 374.941 223.777 375.358 223.338C375.775 222.899 376.284 222.552 376.85 222.323C396.623 214.261 410.376 205.786 410.973 197.196C412.568 174.428 344.26 156.078 321.997 150.712ZM295.254 128.885C299.734 136.73 276.646 189 259.474 225.561C259.186 226.172 258.715 226.682 258.121 227.024C257.528 227.365 256.842 227.521 256.155 227.47C255.468 227.419 254.814 227.164 254.28 226.739C253.746 226.314 253.358 225.739 253.169 225.093C246.234 201.322 238.306 173.392 229.824 149.683C229.491 148.752 229.508 147.736 229.871 146.817C230.235 145.897 230.921 145.133 231.808 144.662C252.989 133.363 289.234 118.358 295.254 128.885ZM193.746 135.355C202.589 137.807 224.103 190.714 238.424 228.426C238.664 229.056 238.699 229.742 238.527 230.393C238.354 231.044 237.983 231.627 237.461 232.065C236.939 232.503 236.292 232.775 235.608 232.844C234.923 232.913 234.234 232.775 233.632 232.45C211.501 220.453 185.694 206.159 162.529 195.253C161.622 194.823 160.901 194.093 160.493 193.192C160.085 192.292 160.018 191.279 160.303 190.335C167.12 167.736 181.865 132.069 193.746 135.355ZM126.652 210.04C134.676 205.664 188.197 228.216 225.621 244.989C226.248 245.269 226.771 245.73 227.12 246.31C227.47 246.889 227.629 247.56 227.577 248.23C227.524 248.901 227.264 249.54 226.828 250.062C226.393 250.582 225.805 250.962 225.143 251.147C200.813 257.921 172.211 265.664 147.937 273.949C146.985 274.272 145.946 274.255 145.007 273.9C144.067 273.545 143.286 272.876 142.805 272.011C131.257 251.322 115.867 215.92 126.652 210.04ZM133.275 309.188C135.779 300.551 189.952 279.537 228.562 265.548C229.207 265.315 229.91 265.28 230.576 265.448C231.243 265.617 231.84 265.98 232.288 266.49C232.736 266.999 233.015 267.631 233.085 268.299C233.155 268.968 233.015 269.641 232.682 270.23C220.392 291.846 205.758 317.053 194.592 339.672C194.156 340.561 193.409 341.269 192.486 341.668C191.563 342.068 190.525 342.134 189.557 341.853C166.42 335.235 129.905 320.792 133.275 309.188ZM209.739 374.722C205.252 366.884 228.347 314.608 245.519 278.054C245.806 277.442 246.279 276.931 246.872 276.59C247.465 276.249 248.151 276.093 248.838 276.144C249.525 276.194 250.179 276.45 250.713 276.875C251.247 277.3 251.634 277.874 251.824 278.521C258.759 302.285 266.686 330.222 275.169 353.932C275.499 354.862 275.481 355.877 275.117 356.795C274.752 357.713 274.064 358.475 273.178 358.945C252.004 370.223 215.752 385.256 209.76 374.722H209.739ZM311.247 368.252C302.397 365.807 280.883 312.894 266.562 275.182C266.322 274.55 266.285 273.862 266.458 273.21C266.63 272.559 267.003 271.974 267.526 271.536C268.049 271.097 268.697 270.826 269.382 270.758C270.068 270.69 270.759 270.83 271.361 271.157C293.485 283.154 319.299 297.455 342.457 308.362C343.366 308.789 344.089 309.519 344.497 310.42C344.905 311.321 344.971 312.335 344.683 313.28C337.872 335.912 323.128 371.544 311.247 368.252ZM378.341 293.566C370.31 297.949 316.795 275.391 279.365 258.618C278.738 258.338 278.215 257.877 277.866 257.297C277.516 256.718 277.357 256.047 277.409 255.377C277.461 254.706 277.722 254.067 278.158 253.546C278.593 253.025 279.181 252.646 279.843 252.461C304.18 245.687 332.775 237.943 357.049 229.658C358.003 229.335 359.043 229.353 359.984 229.709C360.925 230.065 361.706 230.737 362.188 231.603C373.729 252.285 389.119 287.693 378.341 293.566ZM371.718 194.419C369.207 203.063 315.041 224.077 276.431 238.066C275.784 238.3 275.08 238.335 274.413 238.167C273.746 237.999 273.148 237.635 272.698 237.124C272.249 236.613 271.972 235.98 271.903 235.31C271.833 234.641 271.975 233.966 272.311 233.377C284.594 211.768 299.228 186.554 310.394 163.935C310.833 163.048 311.58 162.343 312.502 161.945C313.425 161.546 314.462 161.481 315.429 161.76C338.566 168.413 375.081 182.815 371.718 194.419Z"/>
-</svg>
-`;
 
 function isExecutable(path: string): boolean {
   try {
@@ -63,6 +51,106 @@ export function resolveDroidBinary(
   return null;
 }
 
+export function assertDroidExecutable(droidBinary: string): void {
+  if (!isExecutable(droidBinary)) throw new Error(`Droid CLI is not executable: ${droidBinary}`);
+}
+
+// bb permission modes map to droid exec autonomy tiers:
+// - "accept-edits"/"auto" keep workspace sandboxing -> --auto medium
+// - "full" bypasses approvals -> --auto high (droid keeps its hard safety checks)
+// - read-only contexts send no flags because droid exec defaults to read-only.
+//   There is deliberately no "readonly" key: bb's permissionCli schema requires
+//   at least one flag per listed mode and drops the whole agent otherwise.
+//
+// The entry must satisfy provider-acp's strict customAgents schema, so it
+// carries no "logo"; app.tsx supplies the provider icon instead.
+export function managedAgentEntry(droidBinary: string): CustomAgent {
+  return {
+    id: AGENT_ID,
+    displayName: "Factory Droid",
+    command: droidBinary,
+    args: ["exec", "--output-format", "acp"],
+    permissionCli: {
+      workspaceWrite: ["--auto", "medium"],
+      full: ["--auto", "high"],
+    },
+    nativeReasoning: {
+      configId: "reasoning_effort",
+      supportedLevels: ["none", "low", "medium", "high", "xhigh", "max"],
+      levelValues: { none: "off" },
+      defaultLevel: "high",
+    },
+  };
+}
+
+// Parses provider-acp's "customAgents" setting. An empty setting is an empty
+// list; anything that is not a JSON array is the user's own edit and must not
+// be overwritten, so it is an error.
+export function parseCustomAgentsSetting(value: unknown): CustomAgent[] {
+  if (value === undefined || value === null) return [];
+  if (typeof value !== "string") {
+    throw new Error(`${ACP_PLUGIN_ID} setting "${CUSTOM_AGENTS_SETTING}" is not a string`);
+  }
+  if (value.trim().length === 0) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    throw new Error(
+      `${ACP_PLUGIN_ID} setting "${CUSTOM_AGENTS_SETTING}" is not valid JSON; fix it in bb settings first: ${String(error)}`,
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${ACP_PLUGIN_ID} setting "${CUSTOM_AGENTS_SETTING}" must be a JSON array`);
+  }
+  return parsed as CustomAgent[];
+}
+
+export function serializeCustomAgentsSetting(agents: CustomAgent[]): string {
+  return agents.length === 0 ? "" : JSON.stringify(agents, null, 2);
+}
+
+export function findManagedAgent(agents: CustomAgent[]): CustomAgent | undefined {
+  return agents.find((agent) => agent?.id === AGENT_ID);
+}
+
+// Adds or refreshes the managed entry and leaves every other agent untouched.
+export function upsertManagedAgent(
+  agents: CustomAgent[],
+  droidBinary: string,
+): { agents: CustomAgent[]; changed: boolean; message: string } {
+  const entry = managedAgentEntry(droidBinary);
+  const next = [...agents];
+  const index = next.findIndex((agent) => agent?.id === AGENT_ID);
+  if (index < 0) {
+    next.push(entry);
+    return { agents: next, changed: true, message: `added custom ACP agent ${AGENT_ID} (${PROVIDER_ID})` };
+  }
+  const updated = { ...next[index], ...entry };
+  const changed = JSON.stringify(updated) !== JSON.stringify(next[index]);
+  next[index] = updated;
+  return {
+    agents: next,
+    changed,
+    message: changed
+      ? `updated custom ACP agent ${AGENT_ID}`
+      : `custom ACP agent ${AGENT_ID} already up to date`,
+  };
+}
+
+// True when every managed field in the stored entry already matches the
+// current shape, so self-repair has nothing to do.
+export function entryMatchesCurrent(
+  stored: CustomAgent | undefined,
+  droidBinary: string,
+): boolean {
+  if (!stored) return false;
+  const expected = managedAgentEntry(droidBinary);
+  return Object.keys(expected).every(
+    (key) => JSON.stringify(stored[key]) === JSON.stringify(expected[key]),
+  );
+}
+
 function readConfig(configPath: string): Record<string, unknown> {
   if (!existsSync(configPath)) return {};
   const parsed: unknown = JSON.parse(readFileSync(configPath, "utf8"));
@@ -84,108 +172,29 @@ function writeAtomic(path: string, content: string, mode?: number): void {
   }
 }
 
-function writeIfChanged(path: string, content: string): boolean {
-  if (existsSync(path) && readFileSync(path, "utf8") === content) return false;
-  writeAtomic(path, content);
-  return true;
-}
-
-// bb permission modes map to droid exec autonomy tiers:
-// - "accept-edits"/"auto" keep workspace sandboxing -> --auto medium
-// - "full" bypasses approvals -> --auto high (droid keeps its hard safety checks)
-// - read-only contexts send no flags; droid exec defaults to read-only
-export function managedAgentEntry(droidBinary: string): Record<string, unknown> {
-  return {
-    id: AGENT_ID,
-    displayName: "Factory Droid",
-    command: droidBinary,
-    args: ["exec", "--output-format", "acp"],
-    logo: "logos/factory-droid.svg",
-    permissionCli: {
-      readonly: [],
-      workspaceWrite: ["--auto", "medium"],
-      full: ["--auto", "high"],
-    },
-    nativeReasoning: {
-      configId: "reasoning_effort",
-      supportedLevels: ["none", "low", "medium", "high", "xhigh", "max"],
-      levelValues: { none: "off" },
-      defaultLevel: "high",
-    },
-  };
-}
-
-export function provisionInstallation(
-  paths: ProvisionPaths,
-  droidBinary: string,
-): { changed: boolean; messages: string[] } {
-  if (!isExecutable(droidBinary)) throw new Error(`Droid CLI is not executable: ${droidBinary}`);
-  mkdirSync(paths.dataDir, { recursive: true });
-  const logoChanged = writeIfChanged(paths.logoPath, LOGO);
-
-  const config = readConfig(paths.configPath);
-  const agents: CustomAgent[] = Array.isArray(config.customAcpAgents)
-    ? [...(config.customAcpAgents as CustomAgent[])]
-    : [];
-  const entry = managedAgentEntry(droidBinary);
-  const index = agents.findIndex((agent) => agent?.id === AGENT_ID);
-  let configChanged = false;
-  let configMessage: string;
-  if (index < 0) {
-    agents.push(entry);
-    configChanged = true;
-    configMessage = `added custom ACP agent ${AGENT_ID} (${PROVIDER_ID})`;
-  } else {
-    const updated = { ...agents[index], ...entry };
-    configChanged = JSON.stringify(updated) !== JSON.stringify(agents[index]);
-    agents[index] = updated;
-    configMessage = configChanged
-      ? `updated custom ACP agent ${AGENT_ID}`
-      : `custom ACP agent ${AGENT_ID} already up to date`;
-  }
-  if (configChanged) {
-    config.customAcpAgents = agents;
-    writeAtomic(paths.configPath, `${JSON.stringify(config, null, "\t")}\n`);
-  }
-  return {
-    changed: logoChanged || configChanged,
-    messages: [
-      logoChanged ? `wrote ${paths.logoPath}` : `logo already up to date at ${paths.logoPath}`,
-      configMessage,
-    ],
-  };
-}
-
-export function inspectInstallation(paths: ProvisionPaths): {
-  configured: boolean;
-  command?: string;
-  entry?: CustomAgent;
-  error?: string;
-} {
+export function hasLegacyEntry(configPath: string): boolean {
   try {
-    const config = readConfig(paths.configPath);
-    const entry = Array.isArray(config.customAcpAgents)
-      ? (config.customAcpAgents as CustomAgent[]).find((agent) => agent?.id === AGENT_ID)
-      : undefined;
-    return {
-      configured: entry !== undefined,
-      command: typeof entry?.command === "string" ? entry.command : undefined,
-      entry,
-    };
-  } catch (error) {
-    return { configured: false, error: String(error) };
+    const config = readConfig(configPath);
+    return Array.isArray(config.customAcpAgents) && findManagedAgent(config.customAcpAgents as CustomAgent[]) !== undefined;
+  } catch {
+    return false;
   }
 }
 
-// True when every managed field in the stored entry already matches the
-// current shape, so self-repair has nothing to do.
-export function entryMatchesCurrent(
-  stored: CustomAgent | undefined,
-  droidBinary: string,
-): boolean {
-  if (!stored) return false;
-  const expected = managedAgentEntry(droidBinary);
-  return Object.keys(expected).every(
-    (key) => JSON.stringify(stored[key]) === JSON.stringify(expected[key]),
-  );
+// Earlier releases wrote the agent into the deprecated customAcpAgents array
+// in config.json. bb's config validator rejects that shape now, so the entry
+// is removed once the setting owns it. Other agents in the array are kept.
+export function removeLegacyEntry(configPath: string): boolean {
+  const config = readConfig(configPath);
+  if (!Array.isArray(config.customAcpAgents)) return false;
+  const agents = config.customAcpAgents as CustomAgent[];
+  const remaining = agents.filter((agent) => agent?.id !== AGENT_ID);
+  if (remaining.length === agents.length) return false;
+  if (remaining.length === 0) {
+    delete config.customAcpAgents;
+  } else {
+    config.customAcpAgents = remaining;
+  }
+  writeAtomic(configPath, `${JSON.stringify(config, null, "\t")}\n`);
+  return true;
 }
